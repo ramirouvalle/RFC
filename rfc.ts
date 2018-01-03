@@ -2,6 +2,7 @@ export class GenerarRFC {
     constructor(private nombre: string, private paterno: string, private materno: string, private fecha: string) { }
     private rfc: string;
     private primerFactor: number = 34;
+    private segundoFactor: number = 11;
 
     private dirUno: any = {
         ' ': '00',
@@ -149,11 +150,11 @@ export class GenerarRFC {
         return sts;
     }
 
-    private quitarAcentos(strTexto) {
+    private quitarAcentos(strTexto: string): string {
         return strTexto.replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u').replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U');
     }
 
-    public calcularRFC() {
+    public calcularRFC(): string {
         // Eliminar espacios al inicio y final del nombre y apellidos, ademas cambiar todo a mayusculas
         let nombre = this.nombre.trim().toUpperCase();
         let apePaterno = this.paterno.trim().toUpperCase();
@@ -198,11 +199,20 @@ export class GenerarRFC {
         this.rfc += this.fecha.substr(6, 8) + this.fecha.substring(2, 4) + this.fecha.substring(0, 2);
         console.log(this.rfc);
 
-        this.calcularHomoclave(nombre + " " + apePaterno + " " + apeMaterno, this.rfc);
+        this.rfc += this.calcularHomoclave(nombre + " " + apePaterno + " " + apeMaterno, this.rfc);
+        console.log(this.rfc);
+
+        // Calcular digito verificador
+        this.rfc += this.calcularDigitoVerificador(this.rfc);
+        console.log(this.rfc);
+
+        return this.rfc
     }
 
-    private calcularHomoclave(nombreCompleto: string, rfc: string) {
+    private calcularHomoclave(nombreCompleto: string, rfc: string): string {
+        let homoclave = "";
         let nombreEnNumero = "0";
+
         // Convertir el nombre completo a su equivalente en numeros segun las tablas 
         for (let i = 0; i < nombreCompleto.length; i++) {
             let letra = nombreCompleto.charAt(i);
@@ -247,7 +257,52 @@ export class GenerarRFC {
 
         // Obtener el valor del cociente y residuo segun la segunda tabla y agregarlos al rfc
         console.log(this.dirDos[cociente]);
+        homoclave += this.dirDos[cociente];
         console.log(this.dirDos[residuo]);
+        homoclave += this.dirDos[residuo];
 
+        console.log(homoclave);
+        return homoclave;
+    }
+
+    private calcularDigitoVerificador(rfc: string) {
+        let digitoVerificador: string;
+        let rfcEnNumero: number[] = [];
+
+        // Convertir el rfc a su equivalente en numeros segun la tercer tabla
+        for (let i = 0; i < rfc.length; i++) {
+            let letra = rfc.charAt(i);
+            console.log(letra);
+            console.log(this.dirTres[letra]);
+            rfcEnNumero.push(parseInt(this.dirTres[letra]));
+        }
+        console.log(rfcEnNumero);
+
+        // Multiplicar el equivalente de cada digito del rfc en numero por su respectiva posicion y sumar el resultado
+        let sumatoria: number = 0;
+        let posicion: number = 13;
+        for (let i = 0; i < rfcEnNumero.length; i++) {
+            sumatoria += rfcEnNumero[i] * posicion;
+            console.log(sumatoria);
+            posicion--;
+        }
+        console.log(sumatoria);
+
+        // Dividir el resultado de la sumatoria entre el factor de 11 para obtener el digito verificador
+        let residuo: number = sumatoria % this.segundoFactor;
+        console.log(residuo);
+
+        // Si el residuo es igual a cero este sera el valor del digito verificador
+        // Si el residuo es igual a diez el digito verificador sera igual a A
+        // Si el residuo es mayor a cero se restara ese valor al factor 11
+        if (residuo == 0) {
+            digitoVerificador = '0';
+        } else if (residuo == 10) {
+            digitoVerificador = 'A';
+        } else if (residuo > 0) {
+            digitoVerificador = (this.segundoFactor - residuo).toString();
+        }
+        console.log(digitoVerificador);
+        return digitoVerificador;
     }
 }
